@@ -40,18 +40,17 @@ function makePromiseReader(numChunks) {
 function executePromise(numChunks) {
   var reader = makePromiseReader(numChunks);
   var start = performance.now();
-  return new Promise(function(resolve, reject) {
-    function handleChunk(result) {
-      if (result.done) {
-        var end = performance.now();
-        resolve(end - start);
-        return;
-      }
-      reader.read().then(handleChunk);
+
+  return reader.read().then(handleChunk);
+
+  function handleChunk(result) {
+    if (result.done) {
+      var end = performance.now();
+      return end - start;
     }
 
-    reader.read().then(handleChunk).catch(reject);
-  });
+    return reader.read().then(handleChunk);
+  }
 }
 
 function makeSyncReader(numChunks) {
