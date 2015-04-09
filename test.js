@@ -16,7 +16,8 @@ function display(result) {
               ' sync: ' + result.sync + ' (' +
                 (result.sync / result.numChunks) + '/chunk)' +
               ' promise: ' + result.promise + ' (' +
-                (result.promise / result.numChunks) + '/chunk)');
+                (result.promise / result.numChunks) + '/chunk)' +
+              ' ratio: ' + result.promise / result.sync);
 }
 
 function makePromiseReader(numChunks) {
