@@ -28,15 +28,17 @@ function makePromiseReader(numChunks) {
 
   return {
     read: function() {
-      return new Promise(function(resolve, reject) {
-        if (nextChunk >= data.length) {
-          resolve({ value: undefined, done: true });
-          return;
-        }
-        resolve({ value: data[nextChunk++], done: false });
-      });
+      return new Promise(promiseExecutor);
     }
   };
+
+  function promiseExecutor(resolve, reject) {
+    if (nextChunk >= data.length) {
+      resolve({ value: undefined, done: true });
+      return;
+    }
+    resolve({ value: data[nextChunk++], done: false });
+  }
 }
 
 function executePromise(numChunks) {
