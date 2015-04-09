@@ -1,4 +1,27 @@
-function loadHandler() {
+var suite = new Benchmark.Suite();
+
+suite
+.add('sync', function (deferred) {
+  executeSync(10);
+  deferred.resolve();
+}, { defer: true })
+.add('promise', function (deferred) {
+  executePromise(10).then(function () {
+    deferred.resolve();
+  });
+}, { defer: true })
+.on('cycle', function (event) {
+  console.log(event.target.toString());
+})
+.on('complete', function (event) {
+  console.log('Fastest is', this.filter('fastest').pluck('name'));
+})
+.on('error', function (event) {
+  console.log('Error has occured: "' + event.target.error.message + '" in ' + event.target.name);
+})
+.run();
+
+/*function loadHandler() {
   console.log("loaded");
   execute(100).then(function() {
     return execute(10).then(display);
@@ -16,8 +39,9 @@ function display(result) {
               ' sync: ' + result.sync + ' (' +
                 (result.sync / result.numChunks) + '/chunk)' +
               ' promise: ' + result.promise + ' (' +
-                (result.promise / result.numChunks) + '/chunk)');
-}
+                (result.promise / result.numChunks) + '/chunk)' +
+              ' ratio: ' + result.promise / result.sync);
+}*/
 
 function makePromiseReader(numChunks) {
   var data = new Array(numChunks);
@@ -28,32 +52,31 @@ function makePromiseReader(numChunks) {
 
   return {
     read: function() {
-      return new Promise(function(resolve, reject) {
-        if (nextChunk >= data.length) {
-          resolve({ value: undefined, done: true });
-          return;
-        }
-        resolve({ value: data[nextChunk++], done: false });
-      });
+      if (nextChunk >= data.length) {
+        return Promise.resolve({ value: undefined, done: true });
+      }
+      return Promise.resolve({ value: data[nextChunk++], done: false });
     }
   };
 }
 
 function executePromise(numChunks) {
   var reader = makePromiseReader(numChunks);
-  var start = performance.now();
-  return new Promise(function(resolve, reject) {
-    function handleChunk(result) {
-      if (result.done) {
-        var end = performance.now();
-        resolve(end - start);
-        return;
-      }
-      reader.read().then(handleChunk);
+
+  return reader.read().then(handleChunk);
+
+  function handleChunk(result) {
+    if (result.done) {
+      return;
     }
 
-    reader.read().then(handleChunk).catch(reject);
-  });
+    // Avoid loop being optimized away
+    if (result.value[0] > 0) {
+      throw new Error('this should never happen');
+    }
+
+    return reader.read().then(handleChunk);
+  }
 }
 
 function makeSyncReader(numChunks) {
@@ -75,14 +98,20 @@ function makeSyncReader(numChunks) {
 
 function executeSync(numChunks) {
   var reader = makeSyncReader(numChunks);
-  var done = false;
-  var start = performance.now();
-  do
-  {
-    done = reader.read().done;
-  } while(!done);
-  var end = performance.now();
-  return end - start;
+  var result;
+
+  while (true) {
+    result = reader.read();
+
+    if (result.done) {
+      return;
+    }
+
+    // Avoid loop being optimized away
+    if (result.value[0] > 0) {
+      throw new Error('this should never happen');
+    }
+  }
 }
 
 function execute(numChunks) {
