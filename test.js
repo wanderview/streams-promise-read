@@ -1,6 +1,8 @@
 function loadHandler() {
   console.log("loaded");
-  execute(10).then(display).then(function() {
+  execute(100).then(function() {
+    return execute(10).then(display);
+  }).then(function() {
     return execute(100).then(display);
   }).then(function() {
     return execute(1000).then(display);
@@ -20,7 +22,7 @@ function display(result) {
 function makePromiseReader(numChunks) {
   var data = new Array(numChunks);
   for (var i = 0; i < data.length; ++i) {
-    data[i] = new ArrayBuffer(1024);
+    data[i] = new ArrayBuffer(128);
   }
   var nextChunk = 0;
 
