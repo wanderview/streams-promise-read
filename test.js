@@ -1,4 +1,5 @@
 var numChunks = 10;
+var chunkSize = 1024;
 
 try {
   var u = new URL(window.location);
@@ -51,7 +52,7 @@ function display(value) {
 function makePromiseReader(numChunks) {
   var data = new Array(numChunks);
   for (var i = 0; i < data.length; ++i) {
-    data[i] = new ArrayBuffer(128);
+    data[i] = new ArrayBuffer(chunkSize);
   }
   var nextChunk = 0;
 
@@ -87,7 +88,7 @@ function executePromise(numChunks) {
 function makeSyncReader(numChunks) {
   var data = new Array(numChunks);
   for (var i = 0; i < data.length; ++i) {
-    data[i] = new ArrayBuffer(1024);
+    data[i] = new ArrayBuffer(chunkSize);
   }
   var nextChunk = 0;
 
