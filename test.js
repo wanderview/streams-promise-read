@@ -1,45 +1,71 @@
+var auto = false;
 var numChunks = 10;
 var chunkSize = 1024;
 
 try {
   var u = new URL(window.location);
   var params = new URLSearchParams(u.search.substr(1));
-  var override = ~~params.get('chunks');
-  if (override > 0) {
-    numChunks = override;
+  var chunks = params.get('chunks');
+  if (chunks === 'auto') {
+    auto = true;
+  } else if (~~chunks > 0) {
+    numChunks = ~~chunks;
+  }
+  var size = ~~params.get('size');
+  if (size > 0) {
+    chunkSize = size;
   }
 } catch(e) {
   // if we can't get an numChunks override, just use default
 }
 
-runTest(numChunks);
+if (auto) {
+  numChunks = 1;
+
+  function nextTest() {
+    if (numChunks >= 8192) {
+      return;
+    }
+    numChunks *= 2;
+    return runTest(numChunks).then(nextTest);
+  }
+
+  runTest(numChunks).then(nextTest);
+} else {
+  runTest(numChunks);
+}
 
 function runTest(numChunks) {
-  var suite = new Benchmark.Suite();
+  return new Promise(function(resolve, reject) {
+    var suite = new Benchmark.Suite();
 
-  display('Testing ' + numChunks + ' chunks per operation.');
+    display('---------------');
+    display('Testing ' + numChunks + ' chunks of ' + chunkSize + ' bytes per operation.');
 
-  suite
-  .add('sync', function (deferred) {
-    executeSync(numChunks);
-    deferred.resolve();
-  }, { defer: true })
-  .add('promise', function (deferred) {
-    executePromise(numChunks).then(function () {
+    suite
+    .add('sync', function (deferred) {
+      executeSync(numChunks);
       deferred.resolve();
-    });
-  }, { defer: true })
-  .on('cycle', function (event) {
-    display(event.target.toString());
-  })
-  .on('complete', function (event) {
-    display('Fastest is ' + this.filter('fastest').pluck('name'));
-  })
-  .on('error', function (event) {
-    display('Error has occured: "' + event.target.error.message + '" in ' +
-            event.target.name);
-  })
-  .run();
+    }, { defer: true })
+    .add('promise', function (deferred) {
+      executePromise(numChunks).then(function () {
+        deferred.resolve();
+      });
+    }, { defer: true })
+    .on('cycle', function (event) {
+      display(event.target.toString());
+    })
+    .on('complete', function (event) {
+      display('Fastest is ' + this.filter('fastest').pluck('name'));
+      resolve();
+    })
+    .on('error', function (event) {
+      display('Error has occured: "' + event.target.error.message + '" in ' +
+              event.target.name);
+      reject(event.target);
+    })
+    .run();
+  });
 }
 
 function display(value) {
