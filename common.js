@@ -1,41 +1,47 @@
-var auto = false;
-var numChunks = 10;
-var chunkSize = 1024;
+function execute(name, func) {
+  var auto = false;
+  var numChunks = 10;
+  var chunkSize = 1024;
 
-try {
-  var u = new URL(window.location);
-  var params = new URLSearchParams(u.search.substr(1));
-  var chunks = params.get('chunks');
-  if (chunks === 'auto') {
-    auto = true;
-  } else if (~~chunks > 0) {
-    numChunks = ~~chunks;
-  }
-  var size = ~~params.get('size');
-  if (size > 0) {
-    chunkSize = size;
-  }
-} catch(e) {
-  // if we can't get an numChunks override, just use default
-}
-
-if (auto) {
-  numChunks = 1;
-
-  function nextTest() {
-    if (numChunks >= 8192) {
-      return;
+  try {
+    var u = new URL(window.location);
+    var params = new URLSearchParams(u.search.substr(1));
+    var chunks = params.get('chunks');
+    if (chunks === 'auto') {
+      auto = true;
+    } else if (~~chunks > 0) {
+      numChunks = ~~chunks;
     }
-    numChunks *= 2;
-    return runTest(numChunks).then(nextTest);
+    var size = ~~params.get('size');
+    if (size > 0) {
+      chunkSize = size;
+    }
+  } catch(e) {
+    // if we can't get a numChunks override, just use default
   }
 
-  runTest(numChunks).then(nextTest);
-} else {
-  runTest(numChunks);
+  function test(numChunks) {
+    return runTest(name, func, numChunks, chunkSize);
+  }
+
+  if (auto) {
+    numChunks = 1;
+
+    function nextTest() {
+      if (numChunks >= 8192) {
+        return;
+      }
+      numChunks *= 2;
+      return test(numChunks).then(nextTest);
+    }
+
+    test(numChunks).then(nextTest);
+  } else {
+    test(numChunks);
+  }
 }
 
-function runTest(numChunks) {
+function runTest(name, func, numChunks, chunkSize) {
   return new Promise(function(resolve, reject) {
     var suite = new Benchmark.Suite();
 
@@ -43,14 +49,9 @@ function runTest(numChunks) {
     display('Testing ' + numChunks + ' chunks of ' + chunkSize + ' bytes per operation.');
 
     suite
-    .add('sync', function (deferred) {
-      executeSync(numChunks);
+    .add(name, function (deferred) {
+      func(numChunks, chunkSize);
       deferred.resolve();
-    }, { defer: true })
-    .add('promise', function (deferred) {
-      executePromise(numChunks).then(function () {
-        deferred.resolve();
-      });
     }, { defer: true })
     .on('cycle', function (event) {
       display(event.target.toString());
@@ -75,7 +76,7 @@ function display(value) {
   resultList.appendChild(result);
 }
 
-function makePromiseReader(numChunks) {
+function makePromiseReader(numChunks, chunkSize) {
   var data = new Array(numChunks);
   for (var i = 0; i < data.length; ++i) {
     data[i] = new ArrayBuffer(chunkSize);
@@ -92,8 +93,8 @@ function makePromiseReader(numChunks) {
   };
 }
 
-function executePromise(numChunks) {
-  var reader = makePromiseReader(numChunks);
+function executePromise(numChunks, chunkSize) {
+  var reader = makePromiseReader(numChunks, chunkSize);
 
   return reader.read().then(handleChunk);
 
@@ -111,7 +112,7 @@ function executePromise(numChunks) {
   }
 }
 
-function makeSyncReader(numChunks) {
+function makeSyncReader(numChunks, chunkSize) {
   var data = new Array(numChunks);
   for (var i = 0; i < data.length; ++i) {
     data[i] = new ArrayBuffer(chunkSize);
@@ -128,8 +129,8 @@ function makeSyncReader(numChunks) {
   };
 }
 
-function executeSync(numChunks) {
-  var reader = makeSyncReader(numChunks);
+function executeSync(numChunks, chunkSize) {
+  var reader = makeSyncReader(numChunks, chunkSize);
   var result;
 
   while (true) {
@@ -144,11 +145,4 @@ function executeSync(numChunks) {
       throw new Error('this should never happen');
     }
   }
-}
-
-function execute(numChunks) {
-  var syncTime = executeSync(numChunks);
-  return executePromise(numChunks).then(function (dur) {
-    return { numChunks: numChunks, sync: syncTime, promise: dur };
-  });
 }
