@@ -138,9 +138,10 @@ function executeSync(numChunks, chunkSize) {
     result = reader.read();
 
     if (result.done) {
-      return {
-        then: function(func) { func(); }
-      };
+      // Use a real promise here to note completion in async fashion.  This is
+      // necessary to avoid benchmark.js hitting our nested setTimeout()
+      // throttling.
+      return Promise.resolve();
     }
 
     // Avoid loop being optimized away
