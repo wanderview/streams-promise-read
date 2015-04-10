@@ -50,8 +50,9 @@ function runTest(name, func, numChunks, chunkSize) {
 
     suite
     .add(name, function (deferred) {
-      func(numChunks, chunkSize);
-      deferred.resolve();
+      func(numChunks, chunkSize).then(function() {
+        deferred.resolve();
+      });
     }, { defer: true })
     .on('cycle', function (event) {
       display(event.target.toString());
@@ -137,7 +138,9 @@ function executeSync(numChunks, chunkSize) {
     result = reader.read();
 
     if (result.done) {
-      return;
+      return {
+        then: function(func) { func(); }
+      };
     }
 
     // Avoid loop being optimized away
