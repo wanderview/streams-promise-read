@@ -1,7 +1,7 @@
 function execute(name, func) {
-  var auto = false;
-  var numChunks = 10;
-  var chunkSize = 1024;
+  var auto = true;
+  var numChunks = 1;
+  var chunkSize = 1;
 
   try {
     var u = new URL(window.location);
