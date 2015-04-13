@@ -1,5 +1,5 @@
 function execute(name, func) {
-  var auto = true;
+  var auto = false;
   var numChunks = 1;
   var chunkSize = 1;
 
