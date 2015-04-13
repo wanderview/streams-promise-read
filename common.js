@@ -5,14 +5,29 @@ function execute(name, func) {
 
   try {
     var u = new URL(window.location);
-    var params = new URLSearchParams(u.search.substr(1));
-    var chunks = params.get('chunks');
+    var query = u.search.substr(1);
+    var chunks;
+    var size;
+    if (window.URLSearchParams) {
+      var params = new URLSearchParams(query);
+      chunks = params.get('chunks');
+      size = ~~params.get('size');
+    } else {
+      var paramDescriptions = query.split('&');
+      var params = {};
+      for (var i = 0; i < paramDescriptions.length; ++i) {
+        var description = paramDescriptions[i].split('=');
+        params[description[0]] = description[1];
+      }
+      chunks = params['chunks'];
+      size = ~~params['size'];
+    }
+
     if (chunks === 'auto') {
       auto = true;
     } else if (~~chunks > 0) {
       numChunks = ~~chunks;
     }
-    var size = ~~params.get('size');
     if (size > 0) {
       chunkSize = size;
     }
